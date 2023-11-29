@@ -35,22 +35,28 @@ df_movie_details['text_tokenized'] = list(map(lambda x: ' '.join(x), df_movie_de
 df_movie_details.to_pickle("../data/cleaned_synopsis.pkl.gz", compression = 'gzip')
 
 # Creating new dataframe for Similarity measure
-similarity_data = [[], [], []]
+similarity_data = {'movie_id' : [], 'review_label' : [], 'review_tokenized' : [], 'synopsis_tokenized' : []}
 for review in df_reviews:
     movie_id = review['movie_id']
     review_tokenized = review['text_tokenized']
     synopsis_tokenized = df_movie_details['movie_id']['text_tokenized'] #get tokenized synopsis of reviewed movie
     review_label = review['is_spoiler']
-    similarity_data[0].append(review_tokenized)
-    similarity_data[1].append(synopsis_tokenized)
-    similarity_data[2].append(review_label)
+
+    similarity_data['movie_id'].append(movie_id)
+    similarity_data['review_tokenized'].append(review_tokenized)
+    similarity_data['synopsis_tokenized'].append(synopsis_tokenized)
+    similarity_data["review_label"].append(review_label)
+
+similarity_df = pd.DataFrame(similarity_data)
 
 # TF - IDF
 tfidfvectorizer = TfidfVectorizer()
-similarity_tfidf = tfidfvectorizer.fit_transform(similarity_data[:2])
+similarity_df['review_tokenized'] = tfidfvectorizer.fit_transform(similarity_df['review_tokenized'])
+similarity_df['synopsis_tokenized'] = tfidfvectorizer.fit_transform(similarity_df['synopsis_tokenized'])
+similarity_df['similarity_score'] = cosine_similarity(similarity_df['review_tokenized'], similarity_df['synopsis_tokenized'])
 
 # Train Test Split
-X_train, X_test, y_train, y_test = train_test_split(similarity_tfidf[:2], similarity_tfidf[2], test_size=0.3, random_state=42)
+X_train, X_test, y_train, y_test = train_test_split(similarity_df['similarity_score'], similarity_df['review_label'], test_size=0.2, random_state=42)
 
 # Learn threshold of cosine similarity with training data 
 
